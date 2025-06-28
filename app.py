@@ -208,10 +208,10 @@ with tab4:
                     st.error(f"Could not find information to visualize for '{vis_medicine}'.")
 
 # =====================================================================================
-# TAB 5: Zero-Shot Question Answering
+# TAB 5: General QA (RAG)
 # =====================================================================================
 with tab5:
-    st.header("Zero-Shot Question Answering over Graph")
+    st.header("General QA over Graph (RAG)")
     st.write("Ask any natural language question about the medical data.")
     question = st.text_area("Your Question:", value="Which medicines treat Lung cancer and are made by Genentech?")
 
@@ -219,17 +219,30 @@ with tab5:
         if question:
             with st.spinner("Thinking..."):
                 try:
-                    result = llm_chains.cypher_qa_chain.invoke(question)
+                    # Step 1: Generate Cypher query using the dedicated chain
+                    cypher_response = llm_chains.cypher_generation_chain.invoke({
+                        "schema": llm_chains.graph.get_schema,
+                        "question": question
+                    })
+                    generated_query = cypher_response['text'].strip()
+
+                    # Step 2: Execute the query against the database
+                    context = db.query(generated_query)
+
+                    # Step 3: Generate a natural language answer using the QA chain
+                    answer_response = llm_chains.qa_chain.invoke({
+                        "question": question,
+                        "context": context
+                    })
+
                     st.success("Answer:")
-                    st.markdown(result['result'])
+                    st.markdown(answer_response['text'])
                     
-                    # Check if intermediate steps are available before trying to display them
-                    if 'intermediate_steps' in result and result['intermediate_steps']:
-                        with st.expander("Show Details"):
-                            st.write("**Generated Cypher Query:**")
-                            st.code(result['intermediate_steps'][0]['query'], language='cypher')
-                            st.write("**GraphDB Result:**")
-                            st.json(result['intermediate_steps'][1]['context'])
+                    with st.expander("Show Details"):
+                        st.write("**Generated Cypher Query:**")
+                        st.code(generated_query, language='cypher')
+                        st.write("**GraphDB Result:**")
+                        st.json(context)
 
                 except Exception as e:
-                    st.error(f"An error occurred. The LLM might have generated an invalid query. Please try rephrasing. Error: {e}")
+                    st.error(f"An error occurred. The process might have failed at query generation or execution. Please try rephrasing. Error: {e}")
