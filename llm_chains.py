@@ -68,20 +68,28 @@ justifier_prompt = PromptTemplate(
 justifier_chain = LLMChain(llm=llm, prompt=justifier_prompt)
 
 
-# --- 5. RAG-based Question Answering over Graph ---
+# --- 5. Enhanced Graph RAG Question Answering ---
 
-# Chain 1: Cypher Query Generation
-# This chain has a very strict prompt to ensure it only outputs a Cypher query.
-cypher_prompt_template = """You are a Neo4j expert whose sole purpose is to write Cypher queries.
-Your output must be only a single Cypher query, with no preamble, explanation, or any other text.
-Do not respond to the question in natural language, only with a query.
+# Chain 1: Enhanced Cypher Query Generation
+cypher_prompt_template = """You are a Neo4j expert who writes Cypher queries for a medical knowledge graph.
+The graph contains Medicine, Disease, Composition, Manufacturer, and SideEffect nodes with relationships:
+- Medicine-[:USED_FOR]->Disease
+- Medicine-[:HAS_COMPOSITION]->Composition  
+- Medicine-[:MANUFACTURED_BY]->Manufacturer
+- Medicine-[:HAS_SIDE_EFFECT]->SideEffect
+
+IMPORTANT: 
+- Use toLower() for case-insensitive matching
+- Use CONTAINS for partial matching of disease names
+- For lung cancer queries, search for diseases containing 'lung cancer' or 'lung'
+- Always return relevant node properties
 
 Schema:
 {schema}
 
 Question: {question}
 
-Cypher Query:"""
+Output ONLY the Cypher query:"""
 
 cypher_prompt = PromptTemplate(
     template=cypher_prompt_template,
@@ -90,17 +98,20 @@ cypher_prompt = PromptTemplate(
 
 cypher_generation_chain = LLMChain(llm=llm, prompt=cypher_prompt)
 
-# Chain 2: Answer Generation
-# This chain takes the results of the Cypher query and the original question to generate a natural language answer.
-qa_template = """You are an AI assistant answering questions based on data from a knowledge graph.
-Use the provided data to formulate a clear and concise answer. Do not mention the query or the graph.
-If the provided data is empty, state that you could not find an answer in the database.
+# Chain 2: Enhanced Answer Generation
+qa_template = """You are a medical AI assistant that provides comprehensive answers about medicines and diseases.
+Use the provided graph database results to give detailed, helpful responses.
 
-Question:
-{question}
+Question: {question}
 
-Data from Knowledge Graph:
-{context}
+Graph Database Results: {context}
+
+Provide a detailed answer that includes:
+1. Direct answer to the question
+2. Medicine names and their relevant details
+3. Any additional relevant information from the data
+
+If no relevant data is found, suggest alternative search terms or indicate that the information might not be in the database.
 
 Answer:"""
 
@@ -110,3 +121,37 @@ qa_prompt = PromptTemplate(
 )
 
 qa_chain = LLMChain(llm=llm, prompt=qa_prompt)
+
+# Chain 3: Graph RAG Chain for Complex Queries
+graph_rag_template = """You are an expert medical information assistant with access to a comprehensive medicine knowledge graph.
+
+Question: {question}
+
+Available Data from Knowledge Graph:
+{graph_results}
+
+Search Strategies Used: {strategies_used}
+
+Diseases Extracted from Query: {extracted_diseases}
+
+Based on the comprehensive search results above, provide a detailed and informative answer. 
+
+If medicines were found:
+- List the medicines with their key details
+- Explain what conditions they treat
+- Include composition and manufacturer information when available
+- Mention any relevant side effects if asked
+
+If no medicines were found:
+- Explain that no matches were found in the current database
+- Suggest alternative search terms
+- Recommend consulting with healthcare professionals
+
+Answer:"""
+
+graph_rag_prompt = PromptTemplate(
+    template=graph_rag_template,
+    input_variables=["question", "graph_results", "strategies_used", "extracted_diseases"]
+)
+
+graph_rag_chain = LLMChain(llm=llm, prompt=graph_rag_prompt)
