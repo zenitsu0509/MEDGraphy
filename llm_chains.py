@@ -68,61 +68,45 @@ justifier_prompt = PromptTemplate(
 justifier_chain = LLMChain(llm=llm, prompt=justifier_prompt)
 
 
-# --- 5. Zero-Shot Question Answering over Graph ---
-# This chain can translate a natural language question into a Cypher query
-# We explicitly provide the schema to help the LLM generate correct queries.
+# --- 5. RAG-based Question Answering over Graph ---
 
-# We are using a FewShotPromptTemplate to provide the LLM with examples.
-# This helps it generate more accurate queries for the given schema.
-cypher_prompt_template = """You are a Neo4j expert. Your task is to convert a natural language question into a Cypher query to retrieve information from a medical knowledge graph.
-
-Follow these rules:
-- Use only the node labels and relationship types provided in the schema.
-- Pay close attention to the properties of the nodes.
-- For questions about treatment, use the `[:USED_FOR]` relationship.
-- For questions about manufacturers, use the `[:MANUFACTURED_BY]` relationship.
-- For questions about side effects, use the `[:HAS_SIDE_EFFECT]` relationship.
-- Be specific in your matches. For example, use `toLower()` for case-insensitive matching on names.
+# Chain 1: Cypher Query Generation
+# This chain has a very strict prompt to ensure it only outputs a Cypher query.
+cypher_prompt_template = """You are a Neo4j expert whose sole purpose is to write Cypher queries.
+Your output must be only a single Cypher query, with no preamble, explanation, or any other text.
+Do not respond to the question in natural language, only with a query.
 
 Schema:
 {schema}
 
-Below are some examples of questions and their corresponding Cypher queries.
-
-Question: Which medicines treat Lung cancer?
-Cypher Query:
-MATCH (m:Medicine)-[:USED_FOR]->(d:Disease)
-WHERE toLower(d.name) CONTAINS 'lung cancer'
-RETURN m.name
-
-Question: What are the side effects of Augmentin 625 Duo Tablet?
-Cypher Query:
-MATCH (m:Medicine {{name: 'Augmentin 625 Duo Tablet'}})-[:HAS_SIDE_EFFECT]->(s:SideEffect)
-RETURN s.name
-
-Question: Which medicines are made by Genentech?
-Cypher Query:
-MATCH (m:Medicine)-[:MANUFACTURED_BY]->(man:Manufacturer)
-WHERE toLower(man.name) = 'genentech'
-RETURN m.name
-
 Question: {question}
-Cypher Query:
-"""
+
+Cypher Query:"""
 
 cypher_prompt = PromptTemplate(
     template=cypher_prompt_template,
     input_variables=["schema", "question"]
 )
 
-cypher_qa_chain = GraphCypherQAChain.from_llm(
-    llm,
-    graph=graph,
-    verbose=True, # Set to False in production for cleaner output
-    # WARNING: This allows the LLM to execute arbitrary queries on your database.
-    # Ensure your database connection has limited permissions to prevent data corruption or loss.
-    # Only use this if you understand and accept the risks.
-    # See https://python.langchain.com/docs/security for more information.
-    allow_dangerous_requests=True,
-    cypher_prompt=cypher_prompt
+cypher_generation_chain = LLMChain(llm=llm, prompt=cypher_prompt)
+
+# Chain 2: Answer Generation
+# This chain takes the results of the Cypher query and the original question to generate a natural language answer.
+qa_template = """You are an AI assistant answering questions based on data from a knowledge graph.
+Use the provided data to formulate a clear and concise answer. Do not mention the query or the graph.
+If the provided data is empty, state that you could not find an answer in the database.
+
+Question:
+{question}
+
+Data from Knowledge Graph:
+{context}
+
+Answer:"""
+
+qa_prompt = PromptTemplate(
+    template=qa_template, 
+    input_variables=["question", "context"]
 )
+
+qa_chain = LLMChain(llm=llm, prompt=qa_prompt)
