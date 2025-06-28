@@ -223,11 +223,13 @@ with tab5:
                     st.success("Answer:")
                     st.markdown(result['result'])
                     
-                    with st.expander("Show Details"):
-                        st.write("**Generated Cypher Query:**")
-                        st.code(result['intermediate_steps'][0]['query'], language='cypher')
-                        st.write("**GraphDB Result:**")
-                        st.json(result['intermediate_steps'][1]['context'])
+                    # Check if intermediate steps are available before trying to display them
+                    if 'intermediate_steps' in result and result['intermediate_steps']:
+                        with st.expander("Show Details"):
+                            st.write("**Generated Cypher Query:**")
+                            st.code(result['intermediate_steps'][0]['query'], language='cypher')
+                            st.write("**GraphDB Result:**")
+                            st.json(result['intermediate_steps'][1]['context'])
 
                 except Exception as e:
                     st.error(f"An error occurred. The LLM might have generated an invalid query. Please try rephrasing. Error: {e}")
