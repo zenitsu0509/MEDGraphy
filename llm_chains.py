@@ -71,6 +71,50 @@ justifier_chain = LLMChain(llm=llm, prompt=justifier_prompt)
 # --- 5. Zero-Shot Question Answering over Graph ---
 # This chain can translate a natural language question into a Cypher query
 # We explicitly provide the schema to help the LLM generate correct queries.
+
+# We are using a FewShotPromptTemplate to provide the LLM with examples.
+# This helps it generate more accurate queries for the given schema.
+cypher_prompt_template = """You are a Neo4j expert. Your task is to convert a natural language question into a Cypher query to retrieve information from a medical knowledge graph.
+
+Follow these rules:
+- Use only the node labels and relationship types provided in the schema.
+- Pay close attention to the properties of the nodes.
+- For questions about treatment, use the `[:USED_FOR]` relationship.
+- For questions about manufacturers, use the `[:MANUFACTURED_BY]` relationship.
+- For questions about side effects, use the `[:HAS_SIDE_EFFECT]` relationship.
+- Be specific in your matches. For example, use `toLower()` for case-insensitive matching on names.
+
+Schema:
+{schema}
+
+Below are some examples of questions and their corresponding Cypher queries.
+
+Question: Which medicines treat Lung cancer?
+Cypher Query:
+MATCH (m:Medicine)-[:USED_FOR]->(d:Disease)
+WHERE toLower(d.name) CONTAINS 'lung cancer'
+RETURN m.name
+
+Question: What are the side effects of Augmentin 625 Duo Tablet?
+Cypher Query:
+MATCH (m:Medicine {{name: 'Augmentin 625 Duo Tablet'}})-[:HAS_SIDE_EFFECT]->(s:SideEffect)
+RETURN s.name
+
+Question: Which medicines are made by Genentech?
+Cypher Query:
+MATCH (m:Medicine)-[:MANUFACTURED_BY]->(man:Manufacturer)
+WHERE toLower(man.name) = 'genentech'
+RETURN m.name
+
+Question: {question}
+Cypher Query:
+"""
+
+cypher_prompt = PromptTemplate(
+    template=cypher_prompt_template,
+    input_variables=["schema", "question"]
+)
+
 cypher_qa_chain = GraphCypherQAChain.from_llm(
     llm,
     graph=graph,
@@ -80,16 +124,5 @@ cypher_qa_chain = GraphCypherQAChain.from_llm(
     # Only use this if you understand and accept the risks.
     # See https://python.langchain.com/docs/security for more information.
     allow_dangerous_requests=True,
-    cypher_prompt=PromptTemplate(
-        input_variables={'question', 'schema'},
-        template='''You are a Neo4j expert. Given an input question, create a Cypher query to answer the question.
-        Do not use any undeclared variables.
-
-        Schema:
-        {schema}
-
-        Question: {question}
-        Cypher Query:
-        '''
-    )
+    cypher_prompt=cypher_prompt
 )
