@@ -1,0 +1,8 @@
+streamlit
+python-dotenv
+neo4j
+langchain-groq
+langchain
+langchain_community
+pandas
+streamlit-agraph 
