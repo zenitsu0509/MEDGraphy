@@ -3,35 +3,116 @@ from dotenv import load_dotenv
 import llm_chains
 from graph_db import Neo4jConnection
 from streamlit_agraph import agraph, Node, Edge, Config
+from graph_rag_query import GraphRAGQueryEngine
+import pandas as pd
 
 # Load environment variables
 load_dotenv()
 
 # --- Page Configuration ---
 st.set_page_config(page_title="GraphRAG Medical Assistant", layout="wide")
-st.title("⚕️ GraphRAG-Powered AI Medical Assistant")
-st.write("Interacting with a Neo4j medicine knowledge graph.")
+st.title("⚕️ Enhanced GraphRAG-Powered AI Medical Assistant")
+st.write("Advanced medical knowledge graph with semantic search capabilities.")
 
 # --- Initialize Connections (cached for performance) ---
 @st.cache_resource
 def get_neo4j_connection():
     return Neo4jConnection()
 
+@st.cache_resource
+def get_graph_rag_engine():
+    return GraphRAGQueryEngine()
+
 db = get_neo4j_connection()
+rag_engine = get_graph_rag_engine()
 
 # --- UI Tabs for each feature ---
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "1. AI Drug Assistant",
-    "2. Prescription Justifier",
-    "3. Symptom to Drug",
-    "4. Visual Explainer",
-    "5. General QA"
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "1. Enhanced RAG Search",
+    "2. AI Drug Assistant", 
+    "3. Prescription Justifier",
+    "4. Symptom to Drug",
+    "5. Visual Explainer",
+    "6. Data Management"
 ])
 
 # =====================================================================================
-# TAB 1: AI Drug Assistant (Explain, Compare, Recommend)
+# TAB 1: Enhanced Graph RAG Search
 # =====================================================================================
 with tab1:
+    st.header("🔍 Enhanced Graph RAG Search")
+    st.write("Ask natural language questions about medicines and diseases with advanced semantic search.")
+    
+    # Sample questions
+    with st.expander("💡 Sample Questions"):
+        st.write("""
+        - Which medicines treat lung cancer?
+        - What are the side effects of Advacan?
+        - Medicines for breast cancer made by Roche
+        - Show me all cancer treatments
+        - What does Avastin treat?
+        - Medicines that cause headache
+        """)
+    
+    question = st.text_area(
+        "Your Question:", 
+        value="Which medicines treat lung cancer?",
+        height=100,
+        help="Ask any question about medicines, diseases, manufacturers, or side effects"
+    )
+
+    if st.button("🚀 Search with Enhanced RAG", type="primary"):
+        if question:
+            with st.spinner("Searching knowledge graph with advanced semantic matching..."):
+                try:
+                    # Use the enhanced RAG engine
+                    rag_results = rag_engine.answer_natural_language_query(question)
+                    
+                    if rag_results['medicines_found']:
+                        st.success(f"✅ Found {rag_results['total_medicines']} medicines!")
+                        
+                        # Display results in a nice format
+                        for i, medicine in enumerate(rag_results['medicines_found'], 1):
+                            with st.container():
+                                col1, col2 = st.columns([3, 1])
+                                with col1:
+                                    st.markdown(f"**{i}. {medicine['medicine']}**")
+                                    st.write(f"🎯 Treats: {medicine['disease_treated']}")
+                                    if medicine.get('composition'):
+                                        st.write(f"💊 Composition: {medicine['composition']}")
+                                    if medicine.get('manufacturer'):
+                                        st.write(f"🏭 Manufacturer: {medicine['manufacturer']}")
+                                
+                                with col2:
+                                    if st.button(f"Details", key=f"detail_{i}"):
+                                        detailed_info = rag_engine.get_comprehensive_medicine_info(medicine['medicine'])
+                                        st.json(detailed_info)
+                                
+                                st.divider()
+                        
+                        # Show search details
+                        with st.expander("🔍 Search Details"):
+                            st.write(f"**Original Query:** {rag_results['original_query']}")
+                            st.write(f"**Normalized Query:** {rag_results['normalized_query']}")
+                            st.write(f"**Extracted Diseases:** {rag_results['extracted_diseases']}")
+                            st.write(f"**Search Strategies:** {rag_results['search_strategies_used']}")
+                    
+                    else:
+                        st.warning("⚠️ No medicines found for your query.")
+                        st.info("💡 Try different terms like 'cancer', 'pain', 'infection', or specific medicine names.")
+                        
+                        # Show what was searched
+                        with st.expander("🔍 Search Analysis"):
+                            st.json(rag_results)
+                
+                except Exception as e:
+                    st.error(f"❌ Search failed: {str(e)}")
+                    st.info("Try rephrasing your question or check if the graph database is properly loaded.")
+
+# =====================================================================================
+# TAB 2: AI Drug Assistant (Explain, Compare, Recommend)
+# =====================================================================================
+with tab2:
     st.header("AI Drug Assistant")
     st.write("Explains medicine details or recommends drugs for a condition.")
     
@@ -84,9 +165,9 @@ with tab1:
                         st.warning(f"No medicines found for '{disease_name}'.")
 
 # =====================================================================================
-# TAB 2: Prescription Justifier
+# TAB 3: Prescription Justifier
 # =====================================================================================
-with tab2:
+with tab3:
     st.header("Prescription Justifier")
     st.write("Analyzes a prescription against a diagnosis to explain why each drug is included.")
     
@@ -130,9 +211,9 @@ with tab2:
                     st.error("Could not retrieve information for the given prescription.")
 
 # =====================================================================================
-# TAB 3: Symptom-to-Drug Recommender
+# TAB 4: Symptom-to-Drug Recommender
 # =====================================================================================
-with tab3:
+with tab4:
     st.header("Symptom-to-Drug Finder")
     st.write("Finds which medicines might be causing a set of symptoms (side effects).")
     symptoms = st.text_input("Enter symptoms/side effects (comma-separated):", value="Nosebleeds, Fatigue")
@@ -159,9 +240,9 @@ with tab3:
                     st.warning("No single medicine found that causes all the specified symptoms.")
 
 # =====================================================================================
-# TAB 4: RAG-Based Visual Explainer
+# TAB 5: RAG-Based Visual Explainer
 # =====================================================================================
-with tab4:
+with tab5:
     st.header("Medicine Visual Explainer")
     st.write("Generates an interactive graph diagram for a medicine.")
     vis_medicine = st.text_input("Enter a medicine name to visualize:", value="Avastin")
@@ -204,45 +285,83 @@ with tab4:
                     config = Config(width=1100, height=700, directed=True, physics=True, hierarchical=False, nodeHighlightBehavior=True, highlightColor="#F7A7A6")
                     agraph(nodes=nodes, edges=edges, config=config)
 
+# =====================================================================================
+# TAB 6: Data Management
+# =====================================================================================
+with tab6:
+    st.header("📊 Data Management & Diagnostics")
+    st.write("Manage and diagnose the knowledge graph data.")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("🔄 Reload Graph Data")
+        st.write("Reload the CSV data into the Neo4j graph with enhanced parsing.")
+        
+        if st.button("🔄 Reload Data from CSV", type="secondary"):
+            with st.spinner("Reloading graph data..."):
+                try:
+                    from graph_rag_loader import GraphRAGLoader
+                    loader = GraphRAGLoader()
+                    loader.load_csv_to_graph("Medicine_Details.csv")
+                    st.success("✅ Graph data reloaded successfully!")
+                    st.info("🔄 Please refresh the page to see updated results.")
+                except Exception as e:
+                    st.error(f"❌ Failed to reload data: {str(e)}")
+    
+    with col2:
+        st.subheader("🔍 Debug Lung Cancer Data")
+        st.write("Check if lung cancer data is properly loaded in the graph.")
+        
+        if st.button("🔍 Debug Lung Cancer", type="secondary"):
+            with st.spinner("Debugging lung cancer data..."):
+                try:
+                    # Debug lung cancer data
+                    debug_queries = [
+                        "MATCH (d:Disease) WHERE toLower(d.name) CONTAINS 'lung' RETURN d.name ORDER BY d.name",
+                        "MATCH (m:Medicine)-[:USED_FOR]->(d:Disease) WHERE toLower(d.name) CONTAINS 'lung' RETURN m.name, d.name"
+                    ]
+                    
+                    for i, query in enumerate(debug_queries, 1):
+                        st.write(f"**Query {i}:**")
+                        st.code(query, language='cypher')
+                        results = db.query(query)
+                        if results:
+                            st.write(f"Found {len(results)} results:")
+                            for result in results[:10]:
+                                st.write(f"  - {result}")
+                        else:
+                            st.write("No results found")
+                        st.divider()
+                
+                except Exception as e:
+                    st.error(f"❌ Debug failed: {str(e)}")
+    
+    st.subheader("📈 Graph Statistics")
+    if st.button("📊 Get Graph Stats", type="secondary"):
+        with st.spinner("Fetching graph statistics..."):
+            try:
+                stats_queries = {
+                    "Total Medicines": "MATCH (m:Medicine) RETURN count(m) as count",
+                    "Total Diseases": "MATCH (d:Disease) RETURN count(d) as count", 
+                    "Total Manufacturers": "MATCH (man:Manufacturer) RETURN count(man) as count",
+                    "Total Side Effects": "MATCH (s:SideEffect) RETURN count(s) as count",
+                    "Lung Cancer Medicines": "MATCH (m:Medicine)-[:USED_FOR]->(d:Disease) WHERE toLower(d.name) CONTAINS 'lung' RETURN count(DISTINCT m) as count"
+                }
+                
+                stats_results = {}
+                for stat_name, query in stats_queries.items():
+                    result = db.query(query)
+                    stats_results[stat_name] = result[0]['count'] if result else 0
+                
+                # Display stats
+                stat_cols = st.columns(len(stats_results))
+                for i, (stat_name, count) in enumerate(stats_results.items()):
+                    with stat_cols[i]:
+                        st.metric(stat_name, count)
+                        
+            except Exception as e:
+                st.error(f"❌ Failed to fetch stats: {str(e)}")
+
                 else:
                     st.error(f"Could not find information to visualize for '{vis_medicine}'.")
-
-# =====================================================================================
-# TAB 5: General QA (RAG)
-# =====================================================================================
-with tab5:
-    st.header("General QA over Graph (RAG)")
-    st.write("Ask any natural language question about the medical data.")
-    question = st.text_area("Your Question:", value="Which medicines treat Lung cancer and are made by Genentech?")
-
-    if st.button("Get Answer", type="primary"):
-        if question:
-            with st.spinner("Thinking..."):
-                try:
-                    # Step 1: Generate Cypher query using the dedicated chain
-                    cypher_response = llm_chains.cypher_generation_chain.invoke({
-                        "schema": llm_chains.graph.get_schema,
-                        "question": question
-                    })
-                    generated_query = cypher_response['text'].strip()
-
-                    # Step 2: Execute the query against the database
-                    context = db.query(generated_query)
-
-                    # Step 3: Generate a natural language answer using the QA chain
-                    answer_response = llm_chains.qa_chain.invoke({
-                        "question": question,
-                        "context": context
-                    })
-
-                    st.success("Answer:")
-                    st.markdown(answer_response['text'])
-                    
-                    with st.expander("Show Details"):
-                        st.write("**Generated Cypher Query:**")
-                        st.code(generated_query, language='cypher')
-                        st.write("**GraphDB Result:**")
-                        st.json(context)
-
-                except Exception as e:
-                    st.error(f"An error occurred. The process might have failed at query generation or execution. Please try rephrasing. Error: {e}")
