@@ -199,7 +199,7 @@ with tab4:
                             node_ids.add(target_id)
                         
                         rel_type = rel.type.replace("_", " ").title()
-                        edges.append(Edge(source=source_id, to=target_id, label=rel_type))
+                        edges.append(Edge(source=source_id, target=target_id, label=rel_type))
                     
                     config = Config(width=1100, height=700, directed=True, physics=True, hierarchical=False, nodeHighlightBehavior=True, highlightColor="#F7A7A6")
                     agraph(nodes=nodes, edges=edges, config=config)
