@@ -363,5 +363,5 @@ with tab6:
             except Exception as e:
                 st.error(f"❌ Failed to fetch stats: {str(e)}")
 
-                else:
-                    st.error(f"Could not find information to visualize for '{vis_medicine}'.")
+    else:
+        st.error(f"Could not find information to visualize for '{vis_medicine}'.")
