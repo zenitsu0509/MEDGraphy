@@ -75,6 +75,11 @@ cypher_qa_chain = GraphCypherQAChain.from_llm(
     llm,
     graph=graph,
     verbose=True, # Set to False in production for cleaner output
+    # WARNING: This allows the LLM to execute arbitrary queries on your database.
+    # Ensure your database connection has limited permissions to prevent data corruption or loss.
+    # Only use this if you understand and accept the risks.
+    # See https://python.langchain.com/docs/security for more information.
+    allow_dangerous_requests=True,
     cypher_prompt=PromptTemplate(
         input_variables={'question', 'schema'},
         template='''You are a Neo4j expert. Given an input question, create a Cypher query to answer the question.
