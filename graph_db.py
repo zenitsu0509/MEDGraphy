@@ -14,10 +14,10 @@ class Neo4jConnection:
     """
     def __init__(self):
         # Prioritize Streamlit secrets, fall back to .env for local dev
-            uri = st.secrets["NEO4J_URI"]
-            user = st.secrets["NEO4J_USER"]
-            password = st.secrets["NEO4J_PASSWORD"]
-            st.sidebar.info("Connecting to Neo4j using Streamlit secrets.")
+        uri = st.secrets["NEO4J_URI"]
+        user = st.secrets["NEO4J_USER"]
+        password = st.secrets["NEO4J_PASSWORD"]
+        st.sidebar.info("Connecting to Neo4j using Streamlit secrets.")
 
         self._driver = GraphDatabase.driver(uri, auth=(user, password))
         try:
