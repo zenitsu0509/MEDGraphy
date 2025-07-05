@@ -50,8 +50,8 @@ class Neo4jConnection:
 # This makes it easy for LangChain agents/chains to access graph schema and data
 graph = Neo4jGraph(
     url=st.secrets["NEO4J_URI"], 
-    username=user, 
-    password=password
+    username=st.secrets["NEO4J_USER"], 
+    password=st.secrets["NEO4J_PASSWORD"]
 )
 
 # Refresh schema information for the LangChain graph object
