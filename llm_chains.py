@@ -23,30 +23,31 @@ def get_groq_client():
     return groq.Groq(api_key=groq_api_key)
 
 def get_rag_response(user_query: str, context: dict, groq_client) -> str:
-    """Generates a response from the LLM based on the user query and retrieved context."""
-    
+    """Generates a response from the LLM based on the user's query and retrieved context."""
+
     context_str = json.dumps(context, indent=2)
 
     system_prompt = """
-    You are an expert AI Drug Assistant. Your task is to answer the user's question based *only* on the
-    structured context provided below. Do not use any external knowledge.
-    Present the information clearly and explain your reasoning based on the provided data.
-    If the context does not contain the answer, say that you cannot answer based on the information available.
+    You are a friendly and knowledgeable AI Drug Assistant. Your job is to help answer people's questions using 
+    only the information provided in the context below. Don’t make things up or use outside knowledge. 
+    Be clear, helpful, and explain your answers using the data you’ve been given. 
+    If the context doesn’t have the answer, let the person know.
     """
-    
-    human_prompt = f"""CONTEXT:
+
+    human_prompt = f"""Here's what you know:
     {context_str}
 
-    USER'S QUESTION:
-    {user_query}
+    Someone asked:
+    "{user_query}"
 
-    Based on the context, please answer the user's question."""
+    Using only the context above, give them a clear and helpful answer.
+    """
 
     try:
         chat_completion = groq_client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": human_prompt},
+                {"role": "user", "content": human_prompt},  # use "user" here as it's expected by the API
             ],
             model="llama3-8b-8192",
             temperature=0.3,
