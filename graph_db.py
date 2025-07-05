@@ -14,18 +14,24 @@ class Neo4jConnection:
     """
     def __init__(self):
         # Prioritize Streamlit secrets, fall back to .env for local dev
-        uri = st.secrets["NEO4J_URI"]
-        user = st.secrets["NEO4J_USER"]
-        password = st.secrets["NEO4J_PASSWORD"]
-        st.sidebar.info("Connecting to Neo4j using Streamlit secrets.")
+        if hasattr(st, 'secrets') and "NEO4J_URI" in st.secrets:
+            uri = st.secrets["NEO4J_URI"]
+            user = st.secrets["NEO4J_USER"]
+            password = st.secrets["NEO4J_PASSWORD"]
+            print("Connecting to Neo4j using Streamlit secrets.")
+        else:
+            uri = os.getenv("NEO4J_URI")
+            user = os.getenv("NEO4J_USER")
+            password = os.getenv("NEO4J_PASSWORD")
+            print("Connecting to Neo4j using local .env file.")
 
         self._driver = GraphDatabase.driver(uri, auth=(user, password))
         try:
             # Verify connection
             self._driver.verify_connectivity()
-            st.sidebar.success("Connected to Neo4j")
+            print("Connected to Neo4j")
         except Exception as e:
-            st.sidebar.error(f"Neo4j connection failed: {e}")
+            print(f"Neo4j connection failed: {e}")
 
     def close(self):
         if self._driver is not None:
