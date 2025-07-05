@@ -1,8 +1,7 @@
 streamlit
 python-dotenv
 neo4j
-langchain-groq
-langchain
-langchain_community
+groq
 pandas
-streamlit-agraph 
+streamlit-agraph
+sentence-transformers
