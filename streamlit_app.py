@@ -10,7 +10,7 @@ load_dotenv()
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="MEDGraph", layout="wide")
-st.title("⚕️ MEDGraph: Neo4j-Powered Drug Information App")
+st.title("⚕️ MEDGraphy: A Graph RAG Drug Information App")
 
 # --- HELPER FUNCTIONS ---
 def display_results(result):
@@ -46,11 +46,11 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 ])
 
 with tab1:
-    st.header("❓ Full Graph RAG Query")
+    st.header("❓ General FAQ ")
     st.write("The full RAG pipeline: Retrieve -> Augment -> Generate.")
     user_query = st.text_area("Enter your question:", "What are the side effects of a medicine for headaches?", height=100, key="rag_query")
-    if st.button("Run RAG Query", type="primary"):
-        with st.spinner("Running Full RAG pipeline..."):
+    if st.button("Search in Database", type="primary"):
+        with st.spinner("Searching in NEO4J Database..."):
             rag_context = engine.retrieve_context_for_rag(user_query)
             if not rag_context or not rag_context.get("context"):
                 st.error("Could not find a relevant medicine or context for your query.")
@@ -65,7 +65,7 @@ with tab1:
 with tab2:
     st.header("💊 Direct Medicine Lookup")
     st.write("Finds uses and side effects for a specific medicine.")
-    med_name_direct = st.text_input("Enter Medicine Name:", "Paracetamol", key="direct")
+    med_name_direct = st.text_input("Enter Medicine Name:", "Kelvin 500mg Tablet", key="direct")
     if st.button("Find Details"):
         with st.spinner("Looking up medicine..."):
             result = engine.direct_lookup(med_name_direct)
@@ -74,7 +74,7 @@ with tab2:
 with tab3:
     st.header("🩺 Reverse Lookup by Condition")
     st.write("Finds medicines that treat a specific condition.")
-    condition_name = st.text_input("Enter Condition Name:", "Hypertension", key="reverse")
+    condition_name = st.text_input("Enter Condition Name:", "Hypoglycemia", key="reverse")
     if st.button("Find Medicines"):
         with st.spinner("Finding medicines for condition..."):
             result = engine.reverse_lookup(condition_name)
@@ -83,7 +83,7 @@ with tab3:
 with tab4:
     st.header("⚠️ Potential Interaction Check")
     st.write("Finds other medicines that share the same active ingredient.")
-    med_name_interact = st.text_input("Enter Medicine Name:", "Aspirin", key="interaction")
+    med_name_interact = st.text_input("Enter Medicine Name:", "Kidnymax Tablet", key="interaction")
     if st.button("Check for Interactions"):
         with st.spinner("Checking for potential interactions..."):
             result = engine.check_interactions(med_name_interact)
@@ -101,7 +101,7 @@ with tab5:
 with tab6:
     st.header("📊 Graph Visualization")
     st.write("Generates an interactive graph diagram for a medicine.")
-    vis_medicine = st.text_input("Enter a medicine name to visualize:", "Aspirin", key="vis_med")
+    vis_medicine = st.text_input("Enter a medicine name to visualize:", "Kronostar 300 Tablet CR", key="vis_med")
 
     if st.button("Generate Visualization", type="primary"):
         if vis_medicine:
