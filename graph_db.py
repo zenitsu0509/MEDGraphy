@@ -7,51 +7,50 @@ from dotenv import load_dotenv
 # Load environment variables from .env file for local development
 load_dotenv()
 
-# Determine credentials based on the environment (local vs. Streamlit Cloud)
-# In Streamlit Cloud, credentials should be set in the secrets management.
-# For local development, they are loaded from the .env file.
-if 'NEO4J_URI' in st.secrets:
-    uri = st.secrets["NEO4J_URI"]
-    user = st.secrets["NEO4J_USERNAME"]
-    password = st.secrets["NEO4J_PASSWORD"]
-    print("Connecting to Neo4j using Streamlit secrets.")
-else:
-    uri = os.getenv("NEO4J_URI")
-    user = os.getenv("NEO4J_USERNAME")
-    password = os.getenv("NEO4J_PASSWORD")
-    print("Connecting to Neo4j using local .env file.")
-
-
 class Neo4jConnection:
     """
     A class to manage the connection to a Neo4j database.
     It uses the credentials sourced from Streamlit secrets or a local .env file.
     """
     def __init__(self):
-        self.uri = uri
-        self.user = user
-        self.password = password
-        self.driver = None
+        # Prioritize Streamlit secrets, fall back to .env for local dev
+        if hasattr(st, 'secrets') and "NEO4J_URI" in st.secrets:
+            uri = st.secrets["NEO4J_URI"]
+            user = st.secrets["NEO4J_USER"]
+            password = st.secrets["NEO4J_PASSWORD"]
+            st.sidebar.info("Connecting to Neo4j using Streamlit secrets.")
+        else:
+            uri = os.getenv("NEO4J_URI")
+            user = os.getenv("NEO4J_USER")
+            password = os.getenv("NEO4J_PASSWORD")
+            st.sidebar.info("Connecting to Neo4j using local .env file.")
+
+        self._driver = GraphDatabase.driver(uri, auth=(user, password))
         try:
-            self.driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
             # Verify connection
-            self.driver.verify_connectivity()
-            print("Successfully connected to Neo4j.")
+            self._driver.verify_connectivity()
+            st.sidebar.success("Connected to Neo4j")
         except Exception as e:
-            print(f"Failed to create Neo4j driver: {e}")
+            st.sidebar.error(f"Neo4j connection failed: {e}")
 
     def close(self):
-        if self.driver is not None:
-            self.driver.close()
+        if self._driver is not None:
+            self._driver.close()
 
-    def query(self, query, parameters=None):
+    def query(self, query, parameters=None, db=None):
         """Runs a Cypher query and returns the results."""
-        if self.driver is None:
-            print("Driver not initialized.")
-            return []
-        with self.driver.session() as session:
-            result = session.run(query, parameters)
-            return [record for record in result]
+        assert self._driver is not None, "Driver not initialized!"
+        session = None
+        response = None
+        try:
+            session = self._driver.session(database=db) if db is not None else self._driver.session()
+            response = list(session.run(query, parameters))
+        except Exception as e:
+            print("Query failed:", e)
+        finally:
+            if session is not None:
+                session.close()
+        return response
 
 # Instantiate a global graph object for LangChain
 # This makes it easy for LangChain agents/chains to access graph schema and data
