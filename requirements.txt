@@ -4,5 +4,5 @@ neo4j
 groq
 pandas
 streamlit-agraph
-langchain-community
+langchain_community
 sentence-transformers
