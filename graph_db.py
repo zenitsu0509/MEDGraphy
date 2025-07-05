@@ -49,7 +49,7 @@ class Neo4jConnection:
 # Instantiate a global graph object for LangChain
 # This makes it easy for LangChain agents/chains to access graph schema and data
 graph = Neo4jGraph(
-    url=uri, 
+    url=st.secrets["NEO4J_URI"], 
     username=user, 
     password=password
 )
