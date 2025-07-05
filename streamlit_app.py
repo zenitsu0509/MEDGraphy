@@ -10,6 +10,18 @@ load_dotenv()
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="MEDGraph", layout="wide")
+
+# Hide the sidebar completely
+st.markdown("""
+<style>
+    .css-1d391kg {display: none}
+    .st-emotion-cache-16idsys {display: none}
+    section[data-testid="stSidebar"] {display: none !important}
+    .css-1rs6os {display: none}
+    .css-17eq0hr {display: none}
+</style>
+""", unsafe_allow_html=True)
+
 st.title("⚕️ MEDGraphy: A Graph RAG Drug Information App")
 
 # --- HELPER FUNCTIONS ---

@@ -18,7 +18,7 @@ class GraphQueryEngine:
     def __init__(self):
         self.db = Neo4jConnection()
         self.model = get_embedding_model()
-        st.sidebar.success("Embedding model loaded")
+        print("Embedding model loaded")
 
     def get_embedding(self, text: str) -> list[float]:
         """Generates an embedding for a given text."""

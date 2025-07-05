@@ -13,10 +13,10 @@ def get_groq_client():
     # Prioritize Streamlit secrets, fall back to .env for local dev
     if hasattr(st, 'secrets') and "GROQ_API_KEY" in st.secrets:
         groq_api_key = st.secrets["GROQ_API_KEY"]
-        st.sidebar.info("Using Groq API key from Streamlit secrets.")
+        print("Using Groq API key from Streamlit secrets.")
     else:
         groq_api_key = os.getenv("GROQ_API_KEY")
-        st.sidebar.info("Using Groq API key from local .env file.")
+        print("Using Groq API key from local .env file.")
 
     if not groq_api_key:
         raise ValueError("GROQ_API_KEY not found. Please set it in your .env file or Streamlit secrets.")
