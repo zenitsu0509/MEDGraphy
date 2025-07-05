@@ -78,7 +78,7 @@ with tab3:
     if st.button("Find Medicines"):
         with st.spinner("Finding medicines for condition..."):
             result = engine.reverse_lookup(condition_name)
-            st.write(result)
+            display_results(result)
 
 with tab4:
     st.header("⚠️ Potential Interaction Check")

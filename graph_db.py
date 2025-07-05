@@ -1,7 +1,6 @@
 import os
 import streamlit as st
 from neo4j import GraphDatabase
-from langchain_community.graphs import Neo4jGraph
 from dotenv import load_dotenv
 
 # Load environment variables from .env file for local development
