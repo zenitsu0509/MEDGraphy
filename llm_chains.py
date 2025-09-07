@@ -28,28 +28,25 @@ def get_rag_response(user_query: str, context: dict, groq_client) -> str:
     context_str = json.dumps(context, indent=2)
 
     system_prompt = """
-    You are a friendly and knowledgeable AI Drug Assistant. Your job is to help answer people's questions using 
-    only the information provided in the context below. Don’t make things up or use outside knowledge. 
-    Be clear, helpful, and explain your answers using the data you’ve been given. 
-    If the context doesn’t have the answer, let the person know.
+    You are a friendly and knowledgeable AI Drug Assistant.
+    Use ONLY the provided structured context (which may include composition, raw use text, parsed uses (conditions), side_effects, ingredients, manufacturer, review percentages, and image_url).
+    Guidelines:
+    - If asked to explain: summarize composition (plain terms), primary uses (conditions), and major side effects.
+    - If asked to compare or recommend and only one medicine is provided, say more data may be needed.
+    - If review percentages exist, include a short sentiment summary.
+    - If image_url present, mention that an image is available (do NOT fabricate description of the image content beyond name).
+    - Do NOT invent medical advice beyond the context – if missing, state that.
     """
 
-    human_prompt = f"""Here's what you know:
-    {context_str}
-
-    Someone asked:
-    "{user_query}"
-
-    Using only the context above, give them a clear and helpful answer.
-    """
+    human_prompt = f"""Structured Context:\n{context_str}\n\nUser Question: {user_query}\n\nReturn a concise, bullet-style answer when listing items."""
 
     try:
         chat_completion = groq_client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": human_prompt},  # use "user" here as it's expected by the API
+                {"role": "user", "content": human_prompt},
             ],
-            model="llama-3.1-8b-instant",
+            model="llama3-8b-8192",
             temperature=0.3,
         )
         return chat_completion.choices[0].message.content

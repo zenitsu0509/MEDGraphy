@@ -100,10 +100,19 @@ class GraphQueryEngine:
             OPTIONAL MATCH (m)-[:TREATS]->(c:Condition)
             OPTIONAL MATCH (m)-[:HAS_SIDE_EFFECT]->(s:SideEffect)
             OPTIONAL MATCH (m)-[:CONTAINS_INGREDIENT]->(i:ActiveIngredient)
-            RETURN m.name AS medicine,
-                   collect(DISTINCT c.name) AS uses,
-                   collect(DISTINCT s.name) AS side_effects,
-                   collect(DISTINCT i.name) AS ingredients
+         OPTIONAL MATCH (m)-[:MANUFACTURED_BY]->(mf:Manufacturer)
+         RETURN m.name AS medicine,
+             m.composition AS composition,
+             m.uses_text AS uses_text,
+             m.side_effects_text AS side_effects_text,
+             m.image_url AS image_url,
+             m.excellent_review_pct AS excellent_review_pct,
+             m.average_review_pct AS average_review_pct,
+             m.poor_review_pct AS poor_review_pct,
+             mf.name AS manufacturer,
+             collect(DISTINCT c.name) AS uses,
+             collect(DISTINCT s.name) AS side_effects,
+             collect(DISTINCT i.name) AS ingredients
         """
         context_result = self.db.query(context_query, parameters={"med_name": top_medicine_name}, db="neo4j")
         
