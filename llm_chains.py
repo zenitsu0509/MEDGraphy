@@ -49,7 +49,7 @@ def get_rag_response(user_query: str, context: dict, groq_client) -> str:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": human_prompt},  # use "user" here as it's expected by the API
             ],
-            model="llama3-8b-8192",
+            model="llama-3.1-8b-instant",
             temperature=0.3,
         )
         return chat_completion.choices[0].message.content
