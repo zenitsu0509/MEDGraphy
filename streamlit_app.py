@@ -25,6 +25,24 @@ st.markdown("""
 st.title("⚕️ MEDGraphy: A Graph RAG Drug Information App")
 
 # --- HELPER FUNCTIONS ---
+def display_medicine_image(image_url, medicine_name):
+    """Display medicine image with error handling"""
+    try:
+        if image_url and image_url.strip():
+            st.image(image_url, caption=medicine_name, use_column_width=True)
+        else:
+            # Show placeholder when no image URL is available
+            st.markdown(f"🏥 **{medicine_name}**\n\n*No image available*")
+            # Debug: show what we got
+            if st.button(f"Debug {medicine_name}", key=f"debug_{medicine_name.replace(' ', '_')}"):
+                st.write(f"Image URL received: '{image_url}'")
+    except Exception as e:
+        # Show placeholder when image fails to load
+        st.markdown(f"🏥 **{medicine_name}**\n\n*Image failed to load: {str(e)}*")
+        if st.button(f"Debug {medicine_name}", key=f"debug_err_{medicine_name.replace(' ', '_')}"):
+            st.write(f"Image URL: '{image_url}'")
+            st.write(f"Error: {str(e)}")
+
 def display_results(result):
     if not result:
         st.warning("No results found.")
@@ -48,13 +66,14 @@ engine = init_query_engine()
 groq_client = init_groq_client()
 
 # --- MAIN APP ---
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "❓ Full RAG Query", 
     "💊 Direct Lookup", 
     "🩺 Condition Lookup", 
     "⚠️ Interaction Check", 
     "🔎 Vector Search",
-    "📊 Graph Visualization"
+    "📊 Graph Visualization",
+    "🔧 Debug Images"
 ])
 
 with tab1:
@@ -69,16 +88,19 @@ with tab1:
             else:
                 med_name = rag_context['medicine_found']
                 st.success(f"Found most relevant medicine: **{med_name}**")
-                # NEW: show image card
+                
+                # Display medicine card with image
                 med_card = engine.get_medicine_with_image(med_name)
-                if med_card and med_card.get('image_url'):
+                if med_card:
                     cols = st.columns([1,2])
                     with cols[0]:
-                        st.image(med_card['image_url'], caption=med_name, use_column_width=True)
+                        display_medicine_image(med_card.get('image_url'), med_name)
                     with cols[1]:
                         st.markdown(f"**Composition:** {med_card.get('composition','N/A')}")
                         st.markdown(f"**Manufacturer:** {med_card.get('manufacturer','N/A')}")
                         st.markdown(f"**Reviews:** 👍 {med_card.get('excellent_review_pct',0)}% | 😐 {med_card.get('average_review_pct',0)}% | 👎 {med_card.get('poor_review_pct',0)}%")
+                
+                # Generate and display LLM response
                 response = get_rag_response(user_query, rag_context['context'], groq_client)
                 st.subheader("LLM Response:")
                 st.markdown(response)
@@ -95,7 +117,7 @@ with tab2:
             if med_card:
                 st.markdown(f"### {med_card['name']}")
                 if med_card.get('image_url'):
-                    st.image(med_card['image_url'], caption=med_card['name'], use_column_width=False)
+                    display_medicine_image(med_card['image_url'], med_card['name'])
                 st.markdown(f"**Composition:** {med_card.get('composition','N/A')}")
                 st.markdown(f"**Manufacturer:** {med_card.get('manufacturer','N/A')}")
                 st.markdown(f"**Uses (raw text):** {med_card.get('uses_text','')}")
@@ -117,7 +139,29 @@ with tab3:
     if st.button("Find Medicines"):
         with st.spinner("Finding medicines for condition..."):
             result = engine.reverse_lookup(condition_name)
-            display_results(result)
+            if result:
+                st.subheader(f"Medicines for {condition_name}:")
+                for med_name in result:
+                    # Get detailed medicine info with image
+                    med_card = engine.get_medicine_with_image(med_name)
+                    if med_card:
+                        with st.expander(f"💊 {med_name}"):
+                            if med_card.get('image_url'):
+                                cols = st.columns([1,2])
+                                with cols[0]:
+                                    display_medicine_image(med_card['image_url'], med_name)
+                                with cols[1]:
+                                    st.markdown(f"**Composition:** {med_card.get('composition','N/A')}")
+                                    st.markdown(f"**Manufacturer:** {med_card.get('manufacturer','N/A')}")
+                                    st.markdown(f"**Reviews:** 👍 {med_card.get('excellent_review_pct',0)}% | 😐 {med_card.get('average_review_pct',0)}% | 👎 {med_card.get('poor_review_pct',0)}%")
+                            else:
+                                st.markdown(f"**Composition:** {med_card.get('composition','N/A')}")
+                                st.markdown(f"**Manufacturer:** {med_card.get('manufacturer','N/A')}")
+                                st.markdown(f"**Reviews:** 👍 {med_card.get('excellent_review_pct',0)}% | 😐 {med_card.get('average_review_pct',0)}% | 👎 {med_card.get('poor_review_pct',0)}%")
+                    else:
+                        st.write(f"Medicine: {med_name}")
+            else:
+                st.warning("No medicines found for this condition.")
 
 with tab4:
     st.header("⚠️ Potential Interaction Check")
@@ -126,7 +170,34 @@ with tab4:
     if st.button("Check for Interactions"):
         with st.spinner("Checking for potential interactions..."):
             result = engine.check_interactions(med_name_interact)
-            display_results(result)
+            if result:
+                st.subheader(f"Potential Interactions for {med_name_interact}:")
+                for interaction in result:
+                    other_med = interaction.get('other_medicine')
+                    shared_ingredient = interaction.get('shared_ingredient')
+                    if other_med:
+                        # Get detailed medicine info with image
+                        med_card = engine.get_medicine_with_image(other_med)
+                        if med_card:
+                            with st.expander(f"⚠️ {other_med} (Shared ingredient: {shared_ingredient})"):
+                                if med_card.get('image_url'):
+                                    cols = st.columns([1,2])
+                                    with cols[0]:
+                                        display_medicine_image(med_card['image_url'], other_med)
+                                    with cols[1]:
+                                        st.markdown(f"**Composition:** {med_card.get('composition','N/A')}")
+                                        st.markdown(f"**Manufacturer:** {med_card.get('manufacturer','N/A')}")
+                                        st.markdown(f"**Shared Ingredient:** {shared_ingredient}")
+                                        st.markdown(f"**Reviews:** 👍 {med_card.get('excellent_review_pct',0)}% | 😐 {med_card.get('average_review_pct',0)}% | 👎 {med_card.get('poor_review_pct',0)}%")
+                                else:
+                                    st.markdown(f"**Composition:** {med_card.get('composition','N/A')}")
+                                    st.markdown(f"**Manufacturer:** {med_card.get('manufacturer','N/A')}")
+                                    st.markdown(f"**Shared Ingredient:** {shared_ingredient}")
+                                    st.markdown(f"**Reviews:** 👍 {med_card.get('excellent_review_pct',0)}% | 😐 {med_card.get('average_review_pct',0)}% | 👎 {med_card.get('poor_review_pct',0)}%")
+                        else:
+                            st.write(f"Medicine: {other_med} - Shared ingredient: {shared_ingredient}")
+            else:
+                st.warning("No potential interactions found.")
 
 with tab5:
     st.header("🔎 Vector Similarity Search")
@@ -135,7 +206,31 @@ with tab5:
     if st.button("Search by Similarity"):
         with st.spinner("Performing vector search..."):
             result = engine.vector_similarity_search(query_text)
-            display_results(result)
+            if result:
+                st.subheader("Search Results:")
+                for med_result in result:
+                    med_name = med_result.get('medicine.name')
+                    if med_name:
+                        # Get detailed medicine info with image
+                        med_card = engine.get_medicine_with_image(med_name)
+                        if med_card:
+                            with st.expander(f"📊 {med_name} (Score: {med_result.get('score', 'N/A'):.3f})"):
+                                if med_card.get('image_url'):
+                                    cols = st.columns([1,2])
+                                    with cols[0]:
+                                        display_medicine_image(med_card['image_url'], med_name)
+                                    with cols[1]:
+                                        st.markdown(f"**Composition:** {med_card.get('composition','N/A')}")
+                                        st.markdown(f"**Manufacturer:** {med_card.get('manufacturer','N/A')}")
+                                        st.markdown(f"**Reviews:** 👍 {med_card.get('excellent_review_pct',0)}% | 😐 {med_card.get('average_review_pct',0)}% | 👎 {med_card.get('poor_review_pct',0)}%")
+                                else:
+                                    st.markdown(f"**Composition:** {med_card.get('composition','N/A')}")
+                                    st.markdown(f"**Manufacturer:** {med_card.get('manufacturer','N/A')}")
+                                    st.markdown(f"**Reviews:** 👍 {med_card.get('excellent_review_pct',0)}% | 😐 {med_card.get('average_review_pct',0)}% | 👎 {med_card.get('poor_review_pct',0)}%")
+                        else:
+                            st.write(f"Medicine: {med_name} - Score: {med_result.get('score', 'N/A')}")
+            else:
+                st.warning("No results found.")
 
 with tab6:
     st.header("📊 Graph Visualization")
@@ -179,3 +274,52 @@ with tab6:
                     agraph(nodes=nodes, edges=edges, config=config)
                 else:
                     st.warning(f"Could not find information to visualize for '{vis_medicine}'.")
+
+with tab7:
+    st.header("🔧 Image Debug Tool")
+    st.write("Debug medicine image retrieval and display.")
+    
+    debug_med = st.text_input("Enter Medicine Name for Debug:", "Avastin 400mg Injection", key="debug_med")
+    
+    if st.button("Debug Medicine Data"):
+        with st.spinner("Fetching medicine data..."):
+            # Test direct database query
+            med_card = engine.get_medicine_with_image(debug_med)
+            
+            st.subheader("Raw Medicine Data:")
+            if med_card:
+                st.json(med_card)
+                
+                st.subheader("Image URL Test:")
+                image_url = med_card.get('image_url')
+                st.write(f"Image URL: `{image_url}`")
+                
+                if image_url and image_url.strip():
+                    st.write("✅ Image URL exists and is not empty")
+                    try:
+                        st.image(image_url, caption=debug_med, use_column_width=True)
+                        st.write("✅ Image loaded successfully")
+                    except Exception as e:
+                        st.error(f"❌ Failed to load image: {str(e)}")
+                else:
+                    st.warning("⚠️ Image URL is empty or None")
+            else:
+                st.error("❌ Medicine not found in database")
+    
+    st.subheader("Test Sample Medicine Images")
+    sample_medicines = ["Avastin 400mg Injection", "Augmentin 625 Duo Tablet", "Azithral 500 Tablet"]
+    
+    for med in sample_medicines:
+        if st.button(f"Test {med}", key=f"test_{med.replace(' ', '_')}"):
+            med_card = engine.get_medicine_with_image(med)
+            if med_card and med_card.get('image_url'):
+                cols = st.columns([1,2])
+                with cols[0]:
+                    try:
+                        st.image(med_card['image_url'], caption=med, use_column_width=True)
+                    except Exception as e:
+                        st.error(f"Failed to load: {str(e)}")
+                with cols[1]:
+                    st.json({"name": med_card.get('name'), "image_url": med_card.get('image_url')})
+            else:
+                st.error(f"No data found for {med}")
