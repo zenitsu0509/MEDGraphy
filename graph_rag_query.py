@@ -120,3 +120,60 @@ class GraphQueryEngine:
         """
         result = self.db.query(query, parameters={"med_name": medicine_name}, db="neo4j")
         return result if result else []
+
+    def get_medicine_with_image(self, name: str):
+        query = """
+        MATCH (m:Medicine {name: $name})
+        OPTIONAL MATCH (m)-[:TREATS]->(c:Condition)
+        OPTIONAL MATCH (m)-[:HAS_SIDE_EFFECT]->(s:SideEffect)
+        OPTIONAL MATCH (m)-[:CONTAINS_INGREDIENT]->(i:ActiveIngredient)
+        OPTIONAL MATCH (m)-[:MANUFACTURED_BY]->(mf:Manufacturer)
+        RETURN m.name as name, m.image_url AS image_url, m.composition AS composition,
+               m.uses_text AS uses_text, m.side_effects_text AS side_effects_text,
+               collect(DISTINCT c.name) AS conditions,
+               collect(DISTINCT s.name) AS side_effects,
+               collect(DISTINCT i.name) AS ingredients,
+               mf.name AS manufacturer,
+               m.excellent_review_pct AS excellent_review_pct,
+               m.average_review_pct AS average_review_pct,
+               m.poor_review_pct AS poor_review_pct
+        """
+        res = self.db.query(query, {"name": name})
+        return res[0] if res else None
+
+    def symptom_to_medicines(self, symptoms: list[str], limit: int = 10):
+        # Leverage side effect nodes to map symptoms -> medicines
+        query = """
+        UNWIND $symptoms AS sym
+        MATCH (s:SideEffect)
+        WHERE toLower(s.name) CONTAINS toLower(sym)
+        MATCH (m:Medicine)-[:HAS_SIDE_EFFECT]->(s)
+        RETURN s.name AS matched_symptom, collect(DISTINCT m.name) AS medicines
+        LIMIT $limit
+        """
+        return self.db.query(query, {"symptoms": symptoms, "limit": limit})
+
+    def justify_prescription(self, medicines: list[str]):
+        # Return structured data for each medicine for LLM justification step
+        query = """
+        UNWIND $medicines AS med
+        MATCH (m:Medicine {name: med})
+        OPTIONAL MATCH (m)-[:TREATS]->(c:Condition)
+        OPTIONAL MATCH (m)-[:HAS_SIDE_EFFECT]->(s:SideEffect)
+        OPTIONAL MATCH (m)-[:CONTAINS_INGREDIENT]->(i:ActiveIngredient)
+        RETURN m.name AS medicine,
+               m.composition AS composition,
+               collect(DISTINCT c.name) AS conditions,
+               collect(DISTINCT i.name) AS ingredients,
+               collect(DISTINCT s.name) AS side_effects
+        """
+        return self.db.query(query, {"medicines": medicines})
+
+    def interaction_conflicts(self, medicine: str):
+        # Interacts via previously created INTERACTS_WITH rel
+        query = """
+        MATCH (m:Medicine {name: $medicine})-[:INTERACTS_WITH]-(o:Medicine)
+        RETURN o.name AS interacting_medicine
+        LIMIT 25
+        """
+        return self.db.query(query, {"medicine": medicine})

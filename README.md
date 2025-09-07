@@ -80,3 +80,48 @@ streamlit run streamlit_app.py
 ```
 
 The application will open in your web browser, ready for you to explore!
+
+## 🧩 New Knowledge Graph Ingestion
+
+You can now ingest the `data/Medicine_Details.csv` directly into Neo4j with embeddings and relationship extraction.
+
+```
+python ingest_graph.py --csv data/Medicine_Details.csv --clear
+```
+
+Flags:
+- `--limit N` : ingest only first N rows (debug)
+- `--clear` : wipe existing graph before loading
+
+## 🔗 Graph Schema (Conceptual)
+
+Nodes:
+- `Medicine {name, composition, uses_text, side_effects_text, image_url, excellent_review_pct, average_review_pct, poor_review_pct, embedding}`
+- `ActiveIngredient {name}`
+- `SideEffect {name}`
+- `Condition {name}`
+- `Manufacturer {name}`
+
+Relationships:
+- `(Medicine)-[:CONTAINS_INGREDIENT]->(ActiveIngredient)`
+- `(Medicine)-[:HAS_SIDE_EFFECT]->(SideEffect)`
+- `(Medicine)-[:TREATS]->(Condition)`
+- `(Medicine)-[:MANUFACTURED_BY]->(Manufacturer)`
+- `(Medicine)-[:INTERACTS_WITH {basis:'shared_ingredient', ingredient}]->(Medicine)` (symmetric, created via shared ingredients)
+
+Vector Index:
+- `medicine_embeddings` on `Medicine.embedding` (dim 384, cosine)
+
+## 🧪 Advanced Query Capabilities
+
+Added helper methods in `graph_rag_query.py`:
+- `get_medicine_with_image(name)` – fetch rich card info including image.
+- `symptom_to_medicines(symptoms)` – reverse map symptom keywords to candidate medicines (based on side effects).
+- `justify_prescription(medicines)` – returns structured bundle for LLM justification.
+- `interaction_conflicts(medicine)` – fetch pre-computed `INTERACTS_WITH` peers.
+
+## 🛤️ Roadmap Ideas
+- Add explicit `:CONTRAINDICATED_WITH` from curated rules (composition clashes, duplicate therapeutic class).
+- Integrate external pharmacology ontology (RxNorm / ATC) for class-level reasoning.
+- Add graph-based similarity (graph embeddings) using Neo4j Graph Data Science.
+- Cache RAG contexts per query to reduce latency.
