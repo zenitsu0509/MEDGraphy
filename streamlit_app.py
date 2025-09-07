@@ -67,7 +67,18 @@ with tab1:
             if not rag_context or not rag_context.get("context"):
                 st.error("Could not find a relevant medicine or context for your query.")
             else:
-                st.success(f"Found most relevant medicine: **{rag_context['medicine_found']}**")
+                med_name = rag_context['medicine_found']
+                st.success(f"Found most relevant medicine: **{med_name}**")
+                # NEW: show image card
+                med_card = engine.get_medicine_with_image(med_name)
+                if med_card and med_card.get('image_url'):
+                    cols = st.columns([1,2])
+                    with cols[0]:
+                        st.image(med_card['image_url'], caption=med_name, use_column_width=True)
+                    with cols[1]:
+                        st.markdown(f"**Composition:** {med_card.get('composition','N/A')}")
+                        st.markdown(f"**Manufacturer:** {med_card.get('manufacturer','N/A')}")
+                        st.markdown(f"**Reviews:** 👍 {med_card.get('excellent_review_pct',0)}% | 😐 {med_card.get('average_review_pct',0)}% | 👎 {med_card.get('poor_review_pct',0)}%")
                 response = get_rag_response(user_query, rag_context['context'], groq_client)
                 st.subheader("LLM Response:")
                 st.markdown(response)
@@ -80,8 +91,24 @@ with tab2:
     med_name_direct = st.text_input("Enter Medicine Name:", "Kelvin 500mg Tablet", key="direct")
     if st.button("Find Details"):
         with st.spinner("Looking up medicine..."):
-            result = engine.direct_lookup(med_name_direct)
-            display_results(result)
+            med_card = engine.get_medicine_with_image(med_name_direct)
+            if med_card:
+                st.markdown(f"### {med_card['name']}")
+                if med_card.get('image_url'):
+                    st.image(med_card['image_url'], caption=med_card['name'], use_column_width=False)
+                st.markdown(f"**Composition:** {med_card.get('composition','N/A')}")
+                st.markdown(f"**Manufacturer:** {med_card.get('manufacturer','N/A')}")
+                st.markdown(f"**Uses (raw text):** {med_card.get('uses_text','')}")
+                st.markdown(f"**Side Effects (raw text):** {med_card.get('side_effects_text','')}")
+                conds = [c for c in med_card.get('conditions', []) if c]
+                if conds:
+                    st.markdown("**Parsed Conditions:** " + ', '.join(conds))
+                ses = [s for s in med_card.get('side_effects', []) if s]
+                if ses:
+                    st.markdown("**Parsed Side Effects:** " + ', '.join(ses[:40]))
+                st.progress(med_card.get('excellent_review_pct',0)/100.0, text="Excellent Reviews %")
+            else:
+                st.warning("Medicine not found.")
 
 with tab3:
     st.header("🩺 Reverse Lookup by Condition")
