@@ -75,7 +75,7 @@ def display_medicine_image(image_url, medicine_name, height=160):
     with img_container:
         if safe_url:
             try:
-                st.image(safe_url, caption=medicine_name, use_column_width=True)
+                st.image(safe_url, caption=medicine_name, use_container_width=True)
             except Exception as e:
                 st.markdown(f"<div style='border:1px solid #ccc;padding:0.75rem;border-radius:8px;text-align:center;'>🖼️ <b>{medicine_name}</b><br><span style='font-size:0.8rem;color:#b00;'>Image failed: {e}</span></div>", unsafe_allow_html=True)
         else:
