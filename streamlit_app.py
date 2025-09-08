@@ -34,8 +34,23 @@ st.markdown("""
 # --- HELPER FUNCTIONS ---
 @st.cache_data(show_spinner=False)
 def _cache_med_card(name: str):
-    # Late import to avoid circularities (engine already cached)
-    return engine.get_medicine_with_image(name)
+    """Return a JSON-serialisable dict for a medicine card.
+    Converts Neo4j Record objects into plain dicts so Streamlit caching & hashing work.
+    """
+    record = engine.get_medicine_with_image(name)
+    if record is None:
+        return None
+    # neo4j.Record provides .data() in recent drivers
+    try:
+        if hasattr(record, "data"):
+            record = record.data()
+        else:
+            # Fallback: attempt to build dict from items()
+            record = {k: record[k] for k in record.keys()} if hasattr(record, "keys") else dict(record)
+    except Exception:
+        # As last resort wrap in dict with name only
+        return {"name": name}
+    return record
 
 def sanitize_image_url(image_url: str | None):
     if not image_url or not isinstance(image_url, str):
