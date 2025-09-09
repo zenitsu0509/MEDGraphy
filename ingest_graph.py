@@ -66,7 +66,7 @@ def parse_side_effects(raw: str) -> list[str]:
     return cleaned
 
 CONDITION_KEYWORDS = [
-    "cancer","infection","infections","disease","pain","ulcer","reflux","hypertension","asthma","copd","deficiency","migraine","depression","angina","diarrhea","anxiety","allergic","allergies","dermatitis","fissure","cholesterol","osteoporosis","anemia","epilepsy","tuberculosis","heart failure","anal fissure","vitamin"
+    "cancer","infection","infections","disease","pain","ulcer","reflux","hypertension","asthma","copd","deficiency","migraine","depression","angina","diarrhea","anxiety","allergic","allergies","dermatitis","fissure","cholesterol","osteoporosis","anemia","epilepsy","tuberculosis","heart failure","anal fissure","vitamin","fever"
 ]
 
 def extract_conditions(uses_text: str) -> list[str]:
