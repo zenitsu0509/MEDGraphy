@@ -94,9 +94,7 @@ class GraphQueryEngine:
         )
         return result
 
-    # ----------------------------
-    # Heuristics for RAG
-    # ----------------------------
+    
     def _best_medicine_for_condition(self, condition: str) -> str | None:
         """Pick a representative medicine for a condition using simple heuristics.
         Prefers higher excellent review %, then average; falls back to any match.
