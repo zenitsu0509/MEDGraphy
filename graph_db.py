@@ -52,8 +52,7 @@ class Neo4jConnection:
                 session.close()
         return response
 
-# Instantiate a global graph object for LangChain
-# This makes it easy for LangChain agents/chains to access graph schema and data
+
 graph = Neo4jGraph(
     url=st.secrets["NEO4J_URI"], 
     username=st.secrets["NEO4J_USER"], 
