@@ -6,3 +6,4 @@ pandas
 streamlit-agraph
 langchain_community
 sentence-transformers
+faiss-cpu
