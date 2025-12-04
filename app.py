@@ -12,12 +12,11 @@ load_dotenv()
 
 st.set_page_config(page_title="Medicine GraphRAG AI", layout="wide")
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-NEO4J_URI = os.getenv("NEO4J_URI")
-NEO4J_USER = os.getenv("NEO4J_USERNAME")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
-NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
-
+GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+NEO4J_URI = st.secrets["NEO4J_URI"]
+NEO4J_USER = st.secrets["NEO4J_USERNAME"]
+NEO4J_PASSWORD = st.secrets["NEO4J_PASSWORD"]
+NEO4J_DATABASE = st.secrets.get("NEO4J_DATABASE", "neo4j")
 FAISS_INDEX_PATH = "db/medicine_embeddings.index"
 METADATA_PATH = "db/metadata.json"
 
